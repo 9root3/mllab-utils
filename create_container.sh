@@ -79,7 +79,7 @@ else
 fi
 
 HOST_DIR="/home/$(whoami)/${PROJECT_DIR}"
-HOST_DIR_UTILS="$(dirname "$HOST_DIR")/utils"
+HOST_DIR_UTILS="$(dirname "$HOST_DIR")/mllab-utils"
 CONTAINER_WORKDIR="/workspace"
 
 # 환경변수 설정

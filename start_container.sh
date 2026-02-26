@@ -20,6 +20,6 @@ CONTAINER_NAME=$1
 echo "Starting container if it is stopped: $CONTAINER_NAME"
 docker start "$CONTAINER_NAME" 2>/dev/null
 
-# attach: 컨테이너 메인 프로세스(bash)에 연결
-echo "Attaching to container: $CONTAINER_NAME"
-docker attach "$CONTAINER_NAME"
+# exec: 컨테이너 메인 프로세스(bash)에 연결
+echo "Executing to container: $CONTAINER_NAME"
+docker exec -it "$CONTAINER_NAME" bash
