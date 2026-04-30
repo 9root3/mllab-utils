@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Get the list of containers with their sizes
-docker ps -as --format "table {{.ID}}\t{{.Names}}\t{{.Size}}" | sort -rh -k3
+DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+exec "$DIR/pm.sh" sizes "$@"
