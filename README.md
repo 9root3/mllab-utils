@@ -201,3 +201,20 @@ git checkout v0.2.0
 ```
 
 버전 문자열은 `VERSION` 파일과 `mllab version`으로 확인합니다.
+
+## LLM/Agent Usage
+
+When asked to create a project container, prefer this sequence:
+
+1. Run `mllab config` to inspect server defaults.
+2. Run `mllab test` if this is a fresh clone.
+3. If the project does not exist, run:
+   `mllab init <project> <git_url>`
+4. Build the image:
+   `mllab build <project> <tag>`
+5. Preview container creation first:
+   `mllab start --dry-run -g <gpus> -p <port> <project>`
+6. If the dry-run looks correct, run:
+   `mllab start -g <gpus> -p <port> <project>`
+
+Do not use `--replace`, `mllab rm`, or destructive Docker commands unless explicitly requested.
