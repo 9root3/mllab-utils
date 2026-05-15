@@ -12,17 +12,26 @@ mllab_load_config
 usage() {
   cat <<'EOF'
 Usage:
-  mllab attach [--dry-run] <container_name>
+  mllab attach [--dry-run] [--host-user|--root] <container_name>
 EOF
 }
 
 dry_run=false
+run_as_host_user=$MLLAB_RUN_AS_HOST_USER
 container_name=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -d|--dry-run)
       dry_run=true
+      shift
+      ;;
+    --host-user)
+      run_as_host_user=true
+      shift
+      ;;
+    --root)
+      run_as_host_user=false
       shift
       ;;
     -h|--help)
@@ -43,8 +52,18 @@ done
 
 if $dry_run; then
   mllab_print_command docker start "$container_name"
-  mllab_print_command docker exec -it "$container_name" bash
+  exec_cmd=(docker exec -it)
+  if mllab_bool "$run_as_host_user"; then
+    exec_cmd+=(--user "$(id -u):$(id -g)" -e "HOME=$MLLAB_CONTAINER_HOME")
+  fi
+  exec_cmd+=("$container_name" bash)
+  mllab_print_command "${exec_cmd[@]}"
 else
-  docker start "$container_name" >/dev/null
-  docker exec -it "$container_name" bash
+  docker start "$container_name" >/dev/null 2>&1 || true
+  exec_cmd=(docker exec -it)
+  if mllab_bool "$run_as_host_user"; then
+    exec_cmd+=(--user "$(id -u):$(id -g)" -e "HOME=$MLLAB_CONTAINER_HOME")
+  fi
+  exec_cmd+=("$container_name" bash)
+  "${exec_cmd[@]}"
 fi

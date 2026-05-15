@@ -18,6 +18,10 @@ bash "$ROOT/pm.sh" config >/dev/null
 bash "$ROOT/pm.sh" build --dry-run sample vtest >/dev/null
 [ ! -e "$tmpdir/sample/.dockerignore" ]
 bash "$ROOT/pm.sh" start --dry-run -g 0 -p 9999 sample >/dev/null
+bash "$ROOT/pm.sh" create --dry-run --gpu-backend gpus -g 0 -p 9999 sample >/dev/null
+bash "$ROOT/pm.sh" create --dry-run -g none -p 9999 sample >/dev/null
+bash "$ROOT/pm.sh" create --dry-run --host-user -g none -p 9999 sample >/dev/null
+bash "$ROOT/pm.sh" attach --dry-run --host-user sample_container >/dev/null
 bash "$ROOT/install.sh" --dry-run >/dev/null
 
 while IFS= read -r script; do

@@ -63,11 +63,15 @@ MLLAB_BASE_IMAGE=9root3/ai-research-base:latest
 MLLAB_DEFAULT_TAG=latest
 MLLAB_DEFAULT_PORT=8888
 MLLAB_DEFAULT_GPUS=0,1,2,3
+MLLAB_GPU_BACKEND=runtime
+MLLAB_NVIDIA_DRIVER_CAPABILITIES=compute,utility
 MLLAB_DATA_DIR=/media/data2
 MLLAB_CONTAINER_WORKDIR=/workspace
 MLLAB_UTILS_MOUNT=/utils
 MLLAB_CODE_DIR=code
 MLLAB_CONTAINER_PREFIX=$(whoami)_
+MLLAB_RUN_AS_HOST_USER=false
+MLLAB_CONTAINER_HOME=/workspace/.home
 ```
 
 예를 들어 어떤 노드의 데이터 디렉터리가 `/data/shared`라면 그 서버의 `config.env`에만 다음처럼 적습니다.
@@ -114,6 +118,12 @@ mllab start -g 0 -i someuser/pytorch:latest my-project
 mllab attach "$(whoami)_my-project"
 ```
 
+root-owned 파일 생성을 피하며 접속:
+
+```bash
+mllab attach --host-user "$(whoami)_my-project"
+```
+
 컨테이너 중지/삭제:
 
 ```bash
@@ -146,12 +156,29 @@ mllab test
 -t, --tag TAG
 -n, --name NAME
 -g, --gpus GPUS
+--gpu-backend runtime|gpus
 -i, --image IMAGE
+--host-user
+--root
 -r, --replace
 -d, --dry-run
 ```
 
 `--dry-run`은 Docker 명령을 실제 실행하지 않고, 실행될 명령만 출력합니다.
+
+GPU 없이 CPU-only 컨테이너를 만들고 싶다면 `-g none`을 사용합니다.
+
+```bash
+mllab create -g none my-project
+```
+
+GPU backend는 기본적으로 `runtime`입니다. Snap Docker 환경에서 `--gpus all`이 CDI mount 오류를 내는 경우가 있어, 연구실 서버에서는 `--runtime=nvidia` 기반의 `runtime` 모드를 기본값으로 둡니다. 일반 Docker 설치에서 `--gpus all`을 쓰고 싶다면 `MLLAB_GPU_BACKEND=gpus` 또는 `--gpu-backend gpus`를 사용합니다.
+
+컨테이너 안에서 코딩하면서 root-owned 파일 생성을 피하고 싶다면 `--host-user`를 사용합니다.
+
+```bash
+mllab create --host-user my-project
+```
 
 ## GPU/컨테이너 보조 도구
 
