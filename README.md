@@ -146,6 +146,7 @@ mllab stop [-n name] <project>
 mllab rm [-n name] <project>
 mllab gpu
 mllab sizes
+mllab preflight [options]
 mllab test
 ```
 
@@ -165,6 +166,18 @@ mllab test
 ```
 
 `--dry-run`은 Docker 명령을 실제 실행하지 않고, 실행될 명령만 출력합니다.
+
+GPU 작업을 시작하기 전에 노드의 Docker daemon, NVIDIA runtime, driver, GPU ID, data directory를 확인하려면:
+
+```bash
+mllab preflight -g 0,1
+```
+
+CPU-only 컨테이너는 다음처럼 확인합니다.
+
+```bash
+mllab preflight -g none
+```
 
 GPU 없이 CPU-only 컨테이너를 만들고 싶다면 `-g none`을 사용합니다.
 
@@ -235,13 +248,14 @@ When asked to create a project container, prefer this sequence:
 
 1. Run `mllab config` to inspect server defaults.
 2. Run `mllab test` if this is a fresh clone.
-3. If the project does not exist, run:
+3. Run `mllab preflight -g <gpus>` before a GPU workload.
+4. If the project does not exist, run:
    `mllab init <project> <git_url>`
-4. Build the image:
+5. Build the image:
    `mllab build <project> <tag>`
-5. Preview container creation first:
+6. Preview container creation first:
    `mllab start --dry-run -g <gpus> -p <port> <project>`
-6. If the dry-run looks correct, run:
+7. If the dry-run looks correct, run:
    `mllab start -g <gpus> -p <port> <project>`
 
 Do not use `--replace`, `mllab rm`, or destructive Docker commands unless explicitly requested.

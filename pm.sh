@@ -33,6 +33,7 @@ Commands:
 
   gpu                          Show GPU processes and matching Docker containers.
   sizes                        Show running containers sorted by reported size.
+  preflight [options]          Validate Docker/NVIDIA/GPU configuration.
   test                         Run local smoke tests.
 
 Run "mllab <command> --help" for command-specific options.
@@ -160,6 +161,9 @@ case "$command" in
     ;;
   test)
     exec "$MLLAB_ROOT/tests/smoke.sh" "$@"
+    ;;
+  preflight)
+    exec "$MLLAB_ROOT/scripts/preflight.sh" "$@"
     ;;
   install)
     exec "$MLLAB_ROOT/install.sh" "$@"

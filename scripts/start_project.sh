@@ -43,6 +43,15 @@ while [ "$#" -gt 0 ]; do
       forward_args+=("$1" "$2")
       shift 2
       ;;
+    --gpu-backend)
+      mllab_require_value "$1" "${2:-}"
+      forward_args+=("$1" "$2")
+      shift 2
+      ;;
+    --host-user|--root)
+      forward_args+=("$1")
+      shift
+      ;;
     -r|--replace)
       replace=true
       forward_args+=("$1")
