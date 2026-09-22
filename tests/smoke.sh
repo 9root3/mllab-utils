@@ -27,6 +27,13 @@ case "$gpus_command_contents" in
   *'--gpus device=0'*) ;;
   *) echo "GPU device selection was not forwarded." >&2; exit 1 ;;
 esac
+multi_gpus_command="$tmpdir/multi-gpus-command.txt"
+bash "$ROOT/pm.sh" create --dry-run --gpu-backend gpus -g 0,1 -p 9999 sample > "$multi_gpus_command"
+multi_gpus_command_contents=$(cat "$multi_gpus_command")
+case "$multi_gpus_command_contents" in
+  *'--gpus \"device=0\,1\"'*) ;;
+  *) echo "Multi-GPU device selection was not quoted for Docker." >&2; exit 1 ;;
+esac
 bash "$ROOT/pm.sh" create --dry-run -g none -p 9999 sample >/dev/null
 bash "$ROOT/pm.sh" create --dry-run --host-user -g none -p 9999 sample >/dev/null
 bash "$ROOT/pm.sh" attach --dry-run --host-user sample_container >/dev/null

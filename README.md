@@ -185,7 +185,7 @@ GPU 없이 CPU-only 컨테이너를 만들고 싶다면 `-g none`을 사용합�
 mllab create -g none my-project
 ```
 
-GPU backend는 기본적으로 `runtime`입니다. legacy NVIDIA runtime을 사용하는 서버에서는 `--runtime=nvidia` 기반의 `runtime` 모드를 사용합니다. Docker `info`에 `nvidia.com/gpu` CDI devices가 표시되고 `nvidia` runtime이 없는 서버에서는 `MLLAB_GPU_BACKEND=gpus` 또는 `--gpu-backend gpus`를 사용합니다. 이 모드에서 숫자 GPU 선택은 `--gpus device=<ids>`로 전달됩니다.
+GPU backend는 기본적으로 `runtime`입니다. legacy NVIDIA runtime을 사용하는 서버에서는 `--runtime=nvidia` 기반의 `runtime` 모드를 사용합니다. Docker `info`에 `nvidia.com/gpu` CDI devices가 표시되고 `nvidia` runtime이 없는 서버에서는 `MLLAB_GPU_BACKEND=gpus` 또는 `--gpu-backend gpus`를 사용합니다. 이 모드에서 숫자 GPU 선택은 Docker가 요구하는 형식에 맞춰 `--gpus device=<ids>`로 전달되며, 여러 ID는 내부적으로 quoting됩니다.
 
 컨테이너 안에서 코딩하면서 root-owned 파일 생성을 피하고 싶다면 `--host-user`를 사용합니다.
 

@@ -175,7 +175,12 @@ case "$gpus" in
             cmd+=(--gpus all)
             ;;
           *)
-            cmd+=(--gpus "device=$gpus")
+            if [[ "$gpus" == *,* ]]; then
+              # Docker's --gpus CSV parser needs the device request quoted for multiple IDs.
+              cmd+=(--gpus "\"device=$gpus\"")
+            else
+              cmd+=(--gpus "device=$gpus")
+            fi
             ;;
         esac
         ;;
