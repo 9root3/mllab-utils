@@ -20,7 +20,13 @@ bash "$ROOT/pm.sh" build --dry-run sample vtest >/dev/null
 [ ! -e "$tmpdir/sample/.dockerignore" ]
 bash "$ROOT/pm.sh" start --dry-run -g 0 -p 9999 sample >/dev/null
 bash "$ROOT/pm.sh" start --dry-run --gpu-backend gpus --host-user -g 0 -p 9999 sample >/dev/null
-bash "$ROOT/pm.sh" create --dry-run --gpu-backend gpus -g 0 -p 9999 sample >/dev/null
+gpus_command="$tmpdir/gpus-command.txt"
+bash "$ROOT/pm.sh" create --dry-run --gpu-backend gpus -g 0 -p 9999 sample > "$gpus_command"
+gpus_command_contents=$(cat "$gpus_command")
+case "$gpus_command_contents" in
+  *'--gpus device=0'*) ;;
+  *) echo "GPU device selection was not forwarded." >&2; exit 1 ;;
+esac
 bash "$ROOT/pm.sh" create --dry-run -g none -p 9999 sample >/dev/null
 bash "$ROOT/pm.sh" create --dry-run --host-user -g none -p 9999 sample >/dev/null
 bash "$ROOT/pm.sh" attach --dry-run --host-user sample_container >/dev/null

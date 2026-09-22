@@ -170,7 +170,14 @@ case "$gpus" in
         cmd+=(--runtime=nvidia)
         ;;
       gpus)
-        cmd+=(--gpus all)
+        case "$gpus" in
+          all|ALL)
+            cmd+=(--gpus all)
+            ;;
+          *)
+            cmd+=(--gpus "device=$gpus")
+            ;;
+        esac
         ;;
       *)
         mllab_die "Unsupported GPU backend '$gpu_backend'. Use 'runtime' or 'gpus'."

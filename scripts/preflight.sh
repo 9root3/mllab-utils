@@ -88,7 +88,7 @@ done
 if [ "$gpu_backend" = runtime ]; then
   runtimes=$(docker info --format '{{json .Runtimes}}' 2>/dev/null || true)
   printf '%s' "$runtimes" | grep -q '"nvidia"' || {
-    mllab_die "Docker NVIDIA runtime is unavailable."
+    mllab_die "Docker NVIDIA runtime is unavailable. Use --gpu-backend gpus for CDI-enabled Docker."
   }
 fi
 
