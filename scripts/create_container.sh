@@ -19,7 +19,7 @@ Options:
   -t, --tag TAG             Image tag. Default: config value.
   -n, --name NAME           Container name. Default: <user>_<project>.
   -g, --gpus GPUS           NVIDIA_VISIBLE_DEVICES value. Use "none" for CPU-only.
-  --gpu-backend BACKEND     "runtime" or "gpus". Default: config value.
+  --gpu-backend BACKEND     auto, runtime, or gpus. Default: auto (config).
   -i, --image IMAGE         Override full image name.
   --host-user               Run as the host UID/GID to avoid root-owned files.
   --root                    Run as root even if config enables host-user mode.
@@ -123,6 +123,22 @@ else
   image_name=$image_override
 fi
 
+case "$gpu_backend" in auto|runtime|gpus) ;; *) mllab_die "Unsupported GPU backend '$gpu_backend'. Use auto, runtime, or gpus." ;; esac
+auto_preview=false
+case "$gpus" in
+  none|NONE|cpu|CPU|off|OFF) ;;
+  *)
+    if [ "$gpu_backend" = auto ]; then
+      if $dry_run; then
+        auto_preview=true
+      else
+        gpu_backend=$(mllab_resolve_gpu_backend auto)
+        echo "Auto GPU backend selected: $gpu_backend"
+      fi
+    fi
+    ;;
+esac
+
 if ! $dry_run && mllab_container_exists "$container_name"; then
   if $replace; then
     docker rm -f "$container_name"
@@ -164,10 +180,11 @@ fi
 
 case "$gpus" in
   none|NONE|cpu|CPU|off|OFF)
+    cmd+=(-e NVIDIA_VISIBLE_DEVICES=void)
     ;;
   *)
     case "$gpu_backend" in
-      runtime)
+      runtime|auto)
         cmd+=(--runtime=nvidia)
         ;;
       gpus)
@@ -186,7 +203,7 @@ case "$gpus" in
         esac
         ;;
       *)
-        mllab_die "Unsupported GPU backend '$gpu_backend'. Use 'runtime' or 'gpus'."
+        mllab_die "Unsupported GPU backend '$gpu_backend'. Use auto, runtime, or gpus."
         ;;
     esac
     cmd+=(-e "NVIDIA_VISIBLE_DEVICES=$gpus")
@@ -215,7 +232,11 @@ echo "  DRY_RUN        = $dry_run"
 
 if $dry_run; then
   echo "Would run:"
-  mllab_print_command "${cmd[@]}"
+  if $auto_preview; then
+    mllab_print_auto_gpu_commands "$gpus" "${cmd[@]}"
+  else
+    mllab_print_command "${cmd[@]}"
+  fi
 else
   "${cmd[@]}"
 fi

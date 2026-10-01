@@ -63,7 +63,7 @@ MLLAB_BASE_IMAGE=9root3/ai-research-base:latest
 MLLAB_DEFAULT_TAG=latest
 MLLAB_DEFAULT_PORT=8888
 MLLAB_DEFAULT_GPUS=0,1,2,3
-MLLAB_GPU_BACKEND=runtime
+MLLAB_GPU_BACKEND=auto
 MLLAB_NVIDIA_DRIVER_CAPABILITIES=compute,utility
 MLLAB_DATA_DIR=/media/data2
 MLLAB_CONTAINER_WORKDIR=/workspace
@@ -146,7 +146,7 @@ mllab stop [-n name] <project>
 mllab rm [-n name] <project>
 mllab gpu
 mllab status
-mllab doctor [--image IMAGE] [-g IDS] [--gpu-backend runtime|gpus] [--dry-run]
+mllab doctor [--image IMAGE] [-g IDS] [--gpu-backend auto|runtime|gpus] [--dry-run]
 mllab sizes
 mllab preflight [options]
 mllab test
@@ -159,7 +159,7 @@ mllab test
 -t, --tag TAG
 -n, --name NAME
 -g, --gpus GPUS
---gpu-backend runtime|gpus
+--gpu-backend auto|runtime|gpus
 -i, --image IMAGE
 --host-user
 --root
@@ -187,7 +187,7 @@ GPU 없이 CPU-only 컨테이너를 만들고 싶다면 `-g none`을 사용합�
 mllab create -g none my-project
 ```
 
-GPU backend는 기본적으로 `runtime`입니다. legacy NVIDIA runtime을 사용하는 서버에서는 `--runtime=nvidia` 기반의 `runtime` 모드를 사용합니다. Docker `info`에 `nvidia.com/gpu` CDI devices가 표시되고 `nvidia` runtime이 없는 서버에서는 `MLLAB_GPU_BACKEND=gpus` 또는 `--gpu-backend gpus`를 사용합니다. 이 모드에서 숫자 GPU 선택은 Docker가 요구하는 형식에 맞춰 `--gpus device=<ids>`로 전달되며, 여러 ID는 내부적으로 quoting됩니다.
+GPU backend 기본값은 `auto`입니다. 실행 시 Docker의 runtime 목록에 `nvidia`가 등록되어 있으면 `runtime`, 없으면 `gpus`를 선택합니다. 노드 이름이나 GPU 모델에 의존하지 않고 Docker 설정을 읽으며, 서버 설정을 변경하거나 진단 container를 자동 생성하지 않습니다. 보통 `--gpu-backend`를 지정할 필요가 없습니다. 특수 환경에서는 `--gpu-backend runtime` 또는 `gpus`로 고정할 수 있습니다. 다중 GPU 선택의 Docker quoting은 내부적으로 처리합니다. `auto`의 dry-run은 Docker daemon에 접속하지 않고 두 후보 명령과 선택 조건을 표시합니다. Backend 탐지나 실행이 실패하면 명확하게 오류를 반환하며 다른 backend로 container 작업을 자동 재시도하지 않습니다.
 
 컨테이너 안에서 코딩하면서 root-owned 파일 생성을 피하고 싶다면 `--host-user`를 사용합니다.
 
@@ -237,21 +237,21 @@ GPU index, 모델, VRAM/사용량, compute 점유 여부와 실제 compute PID�
 실제 container 시작과 선택한 GPU의 UUID가 일치하는지 검사하려면:
 
 ```bash
-mllab doctor --dry-run --image pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel --gpu-backend gpus -g 0,1
-mllab doctor --image pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel --gpu-backend gpus -g 0,1
+mllab doctor --dry-run --image pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel -g 0,1
+mllab doctor --image pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel -g 0,1
 # CPU-only: 이미지에 /bin/sh가 있어야 합니다.
 mllab doctor --image ubuntu:22.04 -g none
 ```
 
-이미지는 이미 해당 노드에 있어야 하며 자동으로 pull하지 않습니다. 기본값은 `MLLAB_BASE_IMAGE`, GPU/backend 기본값은 노드 config를 사용합니다. `runtime` 노드는 `--gpu-backend runtime`을 사용합니다. 명령은 preflight 후 임시 container에서 `nvidia-smi` 또는 CPU marker만 실행합니다. Network, host mount, port 노출 없이 실행하며 성공·실패·timeout 시 자신이 만든 container ID만 정리합니다. GNU `timeout`이 필요하고, 시작 timeout은 기본 30초(`--timeout 1..300`)입니다. GPU compute 또는 PyTorch/CUDA 호환성을 검증하는 명령은 아닙니다.
+이미지는 이미 해당 노드에 있어야 하며 자동으로 pull하지 않습니다. 기본값은 `MLLAB_BASE_IMAGE`, GPU/backend 기본값은 노드 config를 사용합니다. Backend는 기본적으로 `auto`가 선택하므로 노드마다 지정할 필요가 없습니다. 기존 config에서 backend를 고정했다면 `MLLAB_GPU_BACKEND=auto`로 바꾸면 됩니다. 명령은 preflight 후 임시 container에서 `nvidia-smi` 또는 CPU marker만 실행합니다. Network, host mount, port 노출 없이 실행하며 성공·실패·timeout 시 자신이 만든 container ID만 정리합니다. GNU `timeout`이 필요하고, 시작 timeout은 기본 30초(`--timeout 1..300`)입니다. GPU compute 또는 PyTorch/CUDA 호환성을 검증하는 명령은 아닙니다.
 
 ## 배포 운영
 
 여러 서버 노드에서 같은 버전을 쓰려면 Git tag를 기준으로 배포합니다.
 
 ```bash
-git tag -a v0.3.0 -m "Release v0.3.0"
-git push origin v0.3.0
+git tag -a v0.3.1 -m "Release v0.3.1"
+git push origin v0.3.1
 ```
 
 각 서버에서는 필요한 버전으로 checkout합니다.
@@ -259,7 +259,7 @@ git push origin v0.3.0
 ```bash
 cd ~/mllab-utils
 git fetch --tags
-git checkout v0.3.0
+git checkout v0.3.1
 ```
 
 버전 문자열은 `VERSION` 파일과 `mllab version`으로 확인합니다.

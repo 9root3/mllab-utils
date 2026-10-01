@@ -16,7 +16,7 @@ Usage:
 
 Options:
   -g, --gpus GPUS           GPU IDs to validate. Default: config value.
-  --gpu-backend BACKEND     "runtime" or "gpus". Default: config value.
+  --gpu-backend BACKEND     auto, runtime, or gpus. Default: auto (config).
   -h, --help                Show this help.
 EOF
 }
@@ -53,10 +53,10 @@ if [ -n "$MLLAB_DATA_DIR" ] && [ ! -d "$MLLAB_DATA_DIR" ]; then
 fi
 
 case "$gpu_backend" in
-  runtime|gpus)
+  auto|runtime|gpus)
     ;;
   *)
-    mllab_die "Unsupported GPU backend '$gpu_backend'. Use 'runtime' or 'gpus'."
+    mllab_die "Unsupported GPU backend '$gpu_backend'. Use auto, runtime, or gpus."
     ;;
 esac
 
@@ -66,6 +66,8 @@ case "$gpus" in
     exit 0
     ;;
 esac
+
+gpu_backend=$(mllab_resolve_gpu_backend "$gpu_backend")
 
 command -v nvidia-smi >/dev/null 2>&1 || mllab_die "nvidia-smi is not available."
 
@@ -87,8 +89,8 @@ done
 
 if [ "$gpu_backend" = runtime ]; then
   runtimes=$(docker info --format '{{json .Runtimes}}' 2>/dev/null || true)
-  printf '%s' "$runtimes" | grep -q '"nvidia"' || {
-    mllab_die "Docker NVIDIA runtime is unavailable. Use --gpu-backend gpus for CDI-enabled Docker."
+  grep -q '"nvidia"[[:space:]]*:' <<< "$runtimes" || {
+    mllab_die "Docker NVIDIA runtime is unavailable. Use --gpu-backend auto or gpus."
   }
 fi
 

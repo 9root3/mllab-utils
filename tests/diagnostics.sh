@@ -11,6 +11,7 @@ export MLLAB_PROC_ROOT="$tmpdir/proc"
 export MOCK_CALLS="$tmpdir/calls"
 export MOCK_CASE=success
 export MOCK_STATUS=active
+export MOCK_RUNTIME=registered
 export MOCK_CONTAINER_ID
 export MOCK_IMAGE_ID
 MOCK_CONTAINER_ID=$(printf '%064d' 7)
@@ -52,8 +53,13 @@ printf '%s\n' "$*" >> "$MOCK_CALLS"
 case "$1" in
   info)
     [ "$MOCK_CASE" != daemon-failure ] || exit 1
-    printf '{"nvidia":{"path":"nvidia-container-runtime"}}\n'
+    case "$MOCK_RUNTIME" in
+      absent) printf '{"runc":{"path":"runc"}}\n' ;;
+      empty) ;;
+      *) printf '{"nvidia":{"path":"nvidia-container-runtime"}}\n' ;;
+    esac
     ;;
+  ps) ;;
   inspect)
     [ "$MOCK_STATUS" != docker-failure ] || exit 1
     case "${@: -1}" in
@@ -131,6 +137,10 @@ done
 bash "$ROOT/pm.sh" doctor --dry-run --gpu-backend gpus -g 0,1 > "$tmpdir/output"
 [ ! -s "$MOCK_CALLS" ]
 grep -Fq -- '--gpus \"device=0\,1\"' "$tmpdir/output"
+bash "$ROOT/pm.sh" doctor --dry-run --gpu-backend auto -g 0,1 > "$tmpdir/output"
+[ ! -s "$MOCK_CALLS" ]
+grep -Fq -- '--runtime=nvidia' "$tmpdir/output"
+grep -Fq -- '--gpus \"device=0\,1\"' "$tmpdir/output"
 for backend in runtime gpus; do
   : > "$MOCK_CALLS"
   bash "$ROOT/pm.sh" doctor --image mock:latest --gpu-backend "$backend" -g 0,1 > "$tmpdir/output"
@@ -140,6 +150,46 @@ for backend in runtime gpus; do
   assert_absent -Eq -- '--mount|--volume|--publish|^pull ' "$MOCK_CALLS"
   if [ "$backend" = gpus ]; then grep -Fq -- '--gpus "device=0,1"' "$MOCK_CALLS"; fi
 done
+
+# The same commands work without a backend flag on either daemon setup.
+mkdir -p "$tmpdir/auto-project"
+export MLLAB_PROJECTS_DIR="$tmpdir"
+export MLLAB_GPU_BACKEND=auto
+for registry in registered absent; do
+  export MOCK_RUNTIME=$registry
+  if [ "$registry" = registered ]; then expected=runtime; else expected=gpus; fi
+  : > "$MOCK_CALLS"
+  bash "$ROOT/pm.sh" preflight -g 0,1 > "$tmpdir/output"
+  grep -q "backend=$expected" "$tmpdir/output"
+  bash "$ROOT/pm.sh" doctor --image mock:latest -g 0,1 > "$tmpdir/output"
+  grep -q "backend=$expected" "$tmpdir/output"
+  for command in create start; do
+    : > "$MOCK_CALLS"
+    bash "$ROOT/pm.sh" "$command" --image mock:latest -g 0,1 auto-project > "$tmpdir/output"
+    if [ "$expected" = runtime ]; then
+      grep -q -- '--runtime=nvidia' "$MOCK_CALLS"
+      assert_absent -q -- '--gpus ' "$MOCK_CALLS"
+    else
+      grep -Fq -- '--gpus "device=0,1"' "$MOCK_CALLS"
+      assert_absent -q -- '--runtime=nvidia' "$MOCK_CALLS"
+    fi
+  done
+done
+export MOCK_RUNTIME=registered
+for registry in registered absent; do
+  : > "$MOCK_CALLS"
+  MOCK_RUNTIME=$registry bash "$ROOT/pm.sh" create --dry-run --gpu-backend auto -g 0,1 auto-project > "$tmpdir/output"
+  [ ! -s "$MOCK_CALLS" ]
+  grep -Fq -- '--runtime=nvidia' "$tmpdir/output"
+  grep -Fq -- '--gpus \"device=0\,1\"' "$tmpdir/output"
+done
+: > "$MOCK_CALLS"
+if MOCK_RUNTIME=empty bash "$ROOT/pm.sh" doctor --image mock:latest -g 0,1 > "$tmpdir/output" 2>&1; then exit 1; fi
+assert_absent -q '^create ' "$MOCK_CALLS"
+: > "$MOCK_CALLS"
+if MOCK_CASE=daemon-failure bash "$ROOT/pm.sh" create --replace -g 0 auto-project > "$tmpdir/output" 2>&1; then exit 1; fi
+assert_absent -Eq '^create |^rm ' "$MOCK_CALLS"
+
 bash "$ROOT/pm.sh" doctor --image mock:latest -g none > "$tmpdir/output"
 grep -q MLLAB_DOCTOR_CPU_OK "$tmpdir/output"
 for failure in daemon-failure missing-image create-failure start-failure timeout wrong-gpu cleanup-failure; do

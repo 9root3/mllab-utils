@@ -76,3 +76,46 @@ mllab_require_value() {
   local value=${2:-}
   [ -n "$value" ] || mllab_die "Missing value for $option"
 }
+
+mllab_resolve_gpu_backend() {
+  local requested=$1
+  local runtimes
+  case "$requested" in
+    auto)
+      runtimes=$(docker info --format '{{json .Runtimes}}') || mllab_die "Cannot select a GPU backend: Docker is unavailable or inaccessible"
+      [ -n "$runtimes" ] || mllab_die "Cannot select a GPU backend: Docker returned no runtime registry"
+      if grep -q '"nvidia"[[:space:]]*:' <<< "$runtimes"; then
+        printf 'runtime\n'
+      else
+        printf 'gpus\n'
+      fi
+      ;;
+    runtime|gpus) printf '%s\n' "$requested" ;;
+    *) mllab_die "Unsupported GPU backend '$requested'. Use auto, runtime, or gpus." ;;
+  esac
+}
+
+# An offline auto preview shows both valid commands, rather than guessing the
+# daemon's configuration or requiring a live Docker daemon for dry-run.
+mllab_print_auto_gpu_commands() {
+  local gpus=$1
+  shift
+  local arg
+  local alternative=()
+  for arg in "$@"; do
+    if [ "$arg" = --runtime=nvidia ]; then
+      case "$gpus" in
+        all|ALL) alternative+=(--gpus all) ;;
+        *,*) alternative+=(--gpus "\"device=$gpus\"") ;;
+        *) alternative+=(--gpus "device=$gpus") ;;
+      esac
+    else
+      alternative+=("$arg")
+    fi
+  done
+  echo "Auto backend: use runtime when Docker registers nvidia; otherwise use gpus."
+  echo "If runtime is selected:"
+  mllab_print_command "$@"
+  echo "If gpus is selected:"
+  mllab_print_command "${alternative[@]}"
+}

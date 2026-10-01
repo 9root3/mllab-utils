@@ -15,7 +15,7 @@ Usage: mllab doctor [options]
 Options:
   -i, --image IMAGE          Existing local image. Default: MLLAB_BASE_IMAGE.
   -g, --gpus IDS             Comma-separated numeric IDs or none. Default: config.
-  --gpu-backend BACKEND      runtime or gpus. Default: config.
+  --gpu-backend BACKEND      auto, runtime, or gpus. Default: auto (config).
   --timeout SECONDS         Container start timeout (1-300). Default: 30.
   -d, --dry-run              Print commands without contacting Docker/NVIDIA.
   -h, --help                 Show this help.
@@ -47,7 +47,7 @@ while [ "$#" -gt 0 ]; do
     *) mllab_die "Unknown doctor argument: $1" ;;
   esac
 done
-case "$backend" in runtime|gpus) ;; *) mllab_die "Unsupported GPU backend '$backend'" ;; esac
+case "$backend" in auto|runtime|gpus) ;; *) mllab_die "Unsupported GPU backend '$backend'" ;; esac
 [ -n "$image" ] || mllab_die "Invalid image name"
 [[ "$image" != -* ]] || mllab_die "Invalid image name"
 [[ "$timeout_seconds" =~ ^[1-9][0-9]{0,2}$ ]] || mllab_die "Timeout must be 1-300 seconds"
@@ -64,6 +64,10 @@ resolved_image=$image
 expected_uuids=""
 if ! $dry_run; then
   command -v timeout >/dev/null 2>&1 || mllab_die "GNU timeout is required"
+  if ! $cpu_only && [ "$backend" = auto ]; then
+    backend=$(mllab_resolve_gpu_backend auto)
+    echo "Auto GPU backend selected: $backend"
+  fi
   bash "$MLLAB_ROOT/scripts/preflight.sh" --gpu-backend "$backend" -g "$gpus"
   resolved_image=$(docker image inspect --format '{{.Id}}' "$image") || mllab_die "Local image '$image' is unavailable; no image was pulled"
   [[ "$resolved_image" =~ ^sha256:[a-f0-9]{64}$ ]] || mllab_die "Could not resolve local image ID"
@@ -85,7 +89,7 @@ cmd=(docker create --pull=never --rm --name "$name" --label io.mllab-utils.docto
 if $cpu_only; then
   cmd+=(-e NVIDIA_VISIBLE_DEVICES=void --entrypoint /bin/sh "$resolved_image" -c 'printf "MLLAB_DOCTOR_CPU_OK\n"')
 else
-  if [ "$backend" = runtime ]; then
+  if [ "$backend" = runtime ] || [ "$backend" = auto ]; then
     cmd+=(--runtime=nvidia)
   elif [[ "$gpus" == *,* ]]; then
     cmd+=(--gpus "\"device=$gpus\"")
@@ -99,7 +103,11 @@ fi
 if $dry_run; then
   mllab_print_command bash "$MLLAB_ROOT/scripts/preflight.sh" --gpu-backend "$backend" -g "$gpus"
   mllab_print_command docker image inspect --format '{{.Id}}' "$image"
-  mllab_print_command "${cmd[@]}"
+  if ! $cpu_only && [ "$backend" = auto ]; then
+    mllab_print_auto_gpu_commands "$gpus" "${cmd[@]}"
+  else
+    mllab_print_command "${cmd[@]}"
+  fi
   mllab_print_command timeout --signal=TERM --kill-after=5 "${timeout_seconds}s" docker start --attach '<created-container-id>'
   mllab_print_command docker rm -f '<created-container-id>'
   exit 0
