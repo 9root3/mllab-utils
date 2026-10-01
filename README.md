@@ -29,7 +29,7 @@ bash install.sh
 기본 설치 결과는 다음 symlink입니다.
 
 ```text
-~/.local/bin/mllab -> ~/mllab-utils/pm.sh
+~/.local/bin/mllab -> ~/mllab-utils/scripts/launcher.sh
 ```
 
 `~/.local/bin`이 `PATH`에 없다면 쉘 설정에 추가합니다.
@@ -293,4 +293,20 @@ mllab update --check  # 캐시를 우회하여 최신 Release 확인
 mllab update          # 최신 Release tag로 fast-forward
 ```
 
-업데이트는 실제 설치 저장소에서 수행하며 main branch와 clean 작업 트리가 필요합니다. Local 수정이나 분기된 이력은 덮어쓰지 않습니다. `flock`으로 동시 업데이트를 막으며 사용자 config, 설치 symlink, 다른 파일, container는 변경하지 않습니다. Git과 curl이 필요하고, 업데이트 실행에는 Linux의 flock이 필요합니다. 자동 알림에는 Python/GitHub CLI가 필요하지 않습니다.
+업데이트는 관리용 저장소에서 수행하며 main branch와 clean 작업 트리가 필요합니다. 선택된 구버전 저장소도 clean이어야 합니다. Local 수정이나 분기된 이력은 덮어쓰지 않습니다. `flock`으로 동시 업데이트를 막으며 사용자 config, 설치 symlink, 다른 파일, container는 변경하지 않습니다. Git과 curl이 필요하고, 업데이트 실행에는 Linux의 flock이 필요합니다. 자동 알림에는 Python/GitHub CLI가 필요하지 않습니다.
+
+
+## 이전 Release로 롤백
+
+```bash
+mllab rollback 0.3.2  # 이전 버전으로 전환 (v0.3.2도 허용)
+mllab version        # 실제 선택된 CLI 버전 확인
+mllab update --check # 선택된 버전과 최신 Release 비교
+mllab update         # 최신 Release로 복귀
+```
+
+v0.3.3부터 설치 symlink는 작은 launcher를 가리킵니다. Launcher는 관리용 저장소에 남아 알림·update·rollback을 처리하고, 다른 명령은 선택된 Release의 CLI에서 실행합니다. 그래서 알림이나 업데이트 명령이 없던 이전 버전으로 내려가도 알림과 최신 버전 복귀가 가능합니다. v0.3.2 이하에서 처음 업데이트한 경우 `bash install.sh`를 한 번 실행하여 launcher를 설치합니다. `bash pm.sh` 직접 호출에는 이 구버전 관리 기능이 적용되지 않습니다.
+
+롤백은 요청한 stable version tag를 `${관리용_저장소}-releases/` 아래 별도 clone으로 설치한 후 관리용 저장소의 `.git/mllab-active`에 선택 경로를 atomic하게 기록합니다. 현재 저장소의 파일·이력을 되돌리거나 삭제하지 않으며, 사용자 config와 container도 바꾸지 않습니다. 완료된 구버전 clone은 설치본으로 보존하고 실패한 부분 clone만 정리합니다. Local 수정이 있거나 tag/VERSION이 다르면 전환하지 않습니다. 오래된 Release의 옵션·GPU backend·동작은 해당 버전을 따르므로 현재 config와의 호환성을 확인해야 합니다.
+
+SSH 접속 자체는 최신 버전을 확인하지 않습니다. `mllab` 사용 시 launcher가 선택된 설치본의 `VERSION`과 GitHub 최신 stable Release를 비교하며, 즉시 확인하려면 `mllab update --check`를 실행합니다. 자동 조회는 하루 캐시를 사용하고 네트워크 장애가 원래 명령을 막지 않습니다.

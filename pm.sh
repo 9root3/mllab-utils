@@ -25,6 +25,7 @@ Commands:
   help                         Show this help.
   version                      Print the installed mllab-utils version.
   update [--check]             Check or install the latest stable release.
+  rollback <version>           Select an older release; preserve current checkout.
   config                       Print the effective runtime configuration.
 
   init <project> <git_url>     Create a project from a Git repository.
@@ -139,6 +140,9 @@ case "$command" in
     ;;
   version)
     cat "$MLLAB_ROOT/VERSION"
+    ;;
+  rollback)
+    mllab_rollback "$@"
     ;;
   update)
     mllab_update "$@"

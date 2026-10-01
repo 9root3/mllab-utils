@@ -13,8 +13,8 @@ usage() {
 Usage:
   bash install.sh [--prefix DIR] [--name NAME] [--dry-run]
 
-Creates a symlink to pm.sh. Default:
-  ~/.local/bin/mllab -> <repo>/pm.sh
+Creates a symlink to the managed launcher. Default:
+  ~/.local/bin/mllab -> <repo>/scripts/launcher.sh
 EOF
 }
 
@@ -52,11 +52,11 @@ if $dry_run; then
   echo "Would run:"
   printf '%q ' mkdir -p "$prefix"
   printf '\n'
-  printf '%q ' ln -sf "$MLLAB_ROOT/pm.sh" "$target"
+  printf '%q ' ln -sf "$MLLAB_ROOT/scripts/launcher.sh" "$target"
   printf '\n'
 else
   mkdir -p "$prefix"
-  ln -sf "$MLLAB_ROOT/pm.sh" "$target"
-  echo "Installed: $target -> $MLLAB_ROOT/pm.sh"
+  ln -sf "$MLLAB_ROOT/scripts/launcher.sh" "$target"
+  echo "Installed: $target -> $MLLAB_ROOT/scripts/launcher.sh"
   echo "Make sure '$prefix' is on PATH."
 fi

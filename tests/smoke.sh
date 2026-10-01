@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_path=$PATH
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
@@ -121,6 +122,7 @@ else
 fi
 
 bash "$ROOT/tests/updates.sh"
+PATH="$original_path" bash "$ROOT/tests/rollback.sh"
 bash "$ROOT/tests/diagnostics.sh"
 
 echo "Smoke tests passed."

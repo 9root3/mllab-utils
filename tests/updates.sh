@@ -6,6 +6,7 @@ trap 'rm -rf "$tmp"' EXIT
 export MLLAB_ROOT="$tmp/checkout" XDG_CACHE_HOME="$tmp/cache"
 mkdir -p "$MLLAB_ROOT" "$tmp/bin"
 echo 0.3.2 > "$MLLAB_ROOT/VERSION"
+touch "$MLLAB_ROOT/pm.sh"
 # shellcheck source=scripts/lib.sh
 source "$ROOT/scripts/lib.sh"
 # shellcheck source=scripts/update.sh

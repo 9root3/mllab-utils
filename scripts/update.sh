@@ -39,7 +39,7 @@ mllab_update_notice() {
   for arg in "$@"; do
     case "$arg" in --dry-run|--help|-h) return 0 ;; esac
   done
-  case "${1:-help}" in test|version|help|-h|--help|update) return 0 ;; esac
+  case "${1:-help}" in test|version|help|-h|--help|update|rollback) return 0 ;; esac
   cache="${XDG_CACHE_HOME:-$HOME/.cache}/mllab-utils/release"
   now=$(date +%s) || return 0
   checked=0 latest=''
@@ -59,6 +59,56 @@ mllab_update_notice() {
   return 0
 }
 
+# State is plain data, never sourced as shell code. Each manager checkout owns it.
+mllab_active_root() {
+  local manager="${MLLAB_MANAGER_ROOT:-$MLLAB_ROOT}" active
+  active=$manager
+  if [ -f "$manager/.git/mllab-active" ]; then
+    read -r active < "$manager/.git/mllab-active" || mllab_die 'Cannot read selected release'
+  fi
+  [ -f "$active/pm.sh" ] && [ -f "$active/VERSION" ] || mllab_die 'Selected release is unavailable'
+  printf '%s\n' "$active"
+}
+
+mllab_activate_root() {
+  local manager=$1 active=$2 tmp
+  tmp=$(mktemp "$manager/.git/mllab-active.XXXXXX") || mllab_die 'Cannot save selected release'
+  printf '%s\n' "$active" > "$tmp"
+  mv -f "$tmp" "$manager/.git/mllab-active" || { rm -f "$tmp"; mllab_die 'Cannot activate release'; }
+}
+
+mllab_rollback() (
+  # A subshell releases the update lock and cleans partial clones on every exit.
+  case "${1:-}" in --help|-h) echo 'Usage: mllab rollback <version>'; exit 0 ;; esac
+  [ "$#" -eq 1 ] || mllab_die 'Usage: mllab rollback <version>'
+  local_version=${1#v}
+  mllab_valid_version "$local_version" || mllab_die 'Expected a stable version such as 0.3.2'
+  [ -n "${MLLAB_MANAGER_ROOT:-}" ] || mllab_die 'Install the managed launcher first: bash install.sh'
+  manager=$MLLAB_MANAGER_ROOT
+  command -v flock >/dev/null 2>&1 || mllab_die 'flock is required for safe rollback'
+  exec 9< "$manager"
+  flock -n 9 || mllab_die 'Another release change is running'
+  active=$(mllab_active_root)
+  installed=$(cat "$active/VERSION")
+  mllab_version_newer "$installed" "$local_version" || mllab_die 'Rollback requires a version older than the selected version'
+  for checkout in "$manager" "$active"; do
+    [ -z "$(git -C "$checkout" status --porcelain)" ] || mllab_die 'Local changes found; preserve them before rollback'
+  done
+  [ "$(git -C "$manager" symbolic-ref --short HEAD)" = main ] || mllab_die 'Release manager requires the main branch'
+  # A successful checkout is retained as an installed version, not a test dump.
+  mkdir -p "${manager}-releases"
+  destination=$(mktemp -d "${manager}-releases/v$local_version.XXXXXX")
+  trap 'if [ -n "$destination" ]; then rm -rf "$destination"; fi' EXIT
+  git clone --quiet --depth 1 --branch "v$local_version" https://github.com/9root3/mllab-utils.git "$destination" || mllab_die 'Release clone failed; selected version unchanged'
+  [ "$(git -C "$destination" rev-parse HEAD)" = "$(git -C "$destination" rev-parse "refs/tags/v$local_version^{commit}")" ] || mllab_die 'Release checkout does not match the requested tag'
+  [ "$(cat "$destination/VERSION")" = "$local_version" ] || mllab_die 'Release tag and VERSION do not match'
+  [ -x "$destination/pm.sh" ] || mllab_die 'Release CLI is missing'
+  bash -n "$destination/pm.sh" || mllab_die 'Release CLI has invalid syntax'
+  mllab_activate_root "$manager" "$destination"
+  destination=''
+  echo "Rolled back mllab-utils: $installed -> $local_version. Run mllab update to return to the latest release."
+)
+
 mllab_update() {
   case "${1:-}" in
     --help|-h) echo 'Usage: mllab update [--check]'; return 0 ;;
@@ -66,9 +116,11 @@ mllab_update() {
     *) mllab_die 'Usage: mllab update [--check]' ;;
   esac
   [ "$#" -le 1 ] || mllab_die 'Usage: mllab update [--check]'
-  local latest installed tag recorded
+  local latest installed tag recorded manager active
+  manager="${MLLAB_MANAGER_ROOT:-$MLLAB_ROOT}"
+  active=$(mllab_active_root)
   latest=$(mllab_latest_release) || mllab_die 'Cannot check the latest release; repository unchanged'
-  installed=$(cat "$MLLAB_ROOT/VERSION")
+  installed=$(cat "$active/VERSION")
   if ! mllab_version_newer "$latest" "$installed"; then
     echo "Installed: $installed; latest release: $latest. No update needed."
     return 0
@@ -79,14 +131,25 @@ mllab_update() {
   fi
   command -v flock >/dev/null 2>&1 || mllab_die 'flock is required for safe updates'
   # The lock is on the checkout, so different installations remain independent.
-  exec 9< "$MLLAB_ROOT"
+  exec 9< "$manager"
   flock -n 9 || mllab_die 'Another update is running'
-  [ -z "$(git -C "$MLLAB_ROOT" status --porcelain)" ] || mllab_die 'Local changes found; preserve them before updating'
-  [ "$(git -C "$MLLAB_ROOT" symbolic-ref --short HEAD)" = main ] || mllab_die 'Update requires the main branch'
+  active=$(mllab_active_root)
+  installed=$(cat "$active/VERSION")
+  if ! mllab_version_newer "$latest" "$installed"; then
+    echo "Installed: $installed; latest release: $latest. No update needed."
+    return 0
+  fi
+  [ -z "$(git -C "$active" status --porcelain)" ] || mllab_die 'Local changes found; preserve them before updating'
+  [ -z "$(git -C "$manager" status --porcelain)" ] || mllab_die 'Local manager changes found; preserve them before updating'
+  [ "$(git -C "$manager" symbolic-ref --short HEAD)" = main ] || mllab_die 'Update requires the main branch'
   tag="v$latest"
-  git -C "$MLLAB_ROOT" fetch --no-tags https://github.com/9root3/mllab-utils.git "refs/tags/$tag:refs/tags/$tag" || mllab_die 'Release fetch failed'
-  recorded=$(git -C "$MLLAB_ROOT" show "$tag:VERSION") || mllab_die 'Release VERSION is missing'
+  git -C "$manager" fetch --no-tags https://github.com/9root3/mllab-utils.git "refs/tags/$tag:refs/tags/$tag" || mllab_die 'Release fetch failed'
+  recorded=$(git -C "$manager" show "$tag:VERSION") || mllab_die 'Release VERSION is missing'
   [ "$recorded" = "$latest" ] || mllab_die 'Release tag and VERSION do not match'
-  git -C "$MLLAB_ROOT" merge --ff-only "$tag" || mllab_die 'Cannot fast-forward; local history was preserved'
+  git -C "$manager" merge --ff-only "$tag" || mllab_die 'Cannot fast-forward; local history was preserved'
+  if [ -n "${MLLAB_MANAGER_ROOT:-}" ]; then
+    [ "$(cat "$manager/VERSION")" = "$latest" ] || mllab_die 'Manager is ahead of the published release; selected version was preserved'
+    mllab_activate_root "$manager" "$manager"
+  fi
   echo "Updated mllab-utils to $latest. User config and containers were preserved."
 }
