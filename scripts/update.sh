@@ -66,7 +66,9 @@ mllab_active_root() {
   if [ -f "$manager/.git/mllab-active" ]; then
     read -r active < "$manager/.git/mllab-active" || mllab_die 'Cannot read selected release'
   fi
-  [ -f "$active/pm.sh" ] && [ -f "$active/VERSION" ] || mllab_die 'Selected release is unavailable'
+  if [ ! -f "$active/pm.sh" ] || [ ! -f "$active/VERSION" ]; then
+    mllab_die 'Selected release is unavailable'
+  fi
   printf '%s\n' "$active"
 }
 
