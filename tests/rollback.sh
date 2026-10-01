@@ -17,7 +17,8 @@ config_before=$(git_config_digest)
 mkdir -p "$tmp/bin" "$tmp/source/config"
 : > "$MLLAB_CONFIG_FILE"
 # Command-scoped config works on older Git and never writes user config files.
-export REAL_GIT=$(command -v git) FIXTURE_SOURCE="$tmp/source"
+REAL_GIT=$(command -v git)
+export REAL_GIT FIXTURE_SOURCE="$tmp/source"
 cat > "$tmp/bin/git" <<'GIT_WRAPPER'
 #!/usr/bin/env bash
 exec "$REAL_GIT" -c user.name='Release Test' -c user.email=release-test@example.invalid \
