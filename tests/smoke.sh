@@ -16,6 +16,10 @@ printf '' > "$tmpdir/sample/code/requirements.txt"
 bash "$ROOT/pm.sh" help >/dev/null
 bash "$ROOT/pm.sh" config >/dev/null
 bash "$ROOT/pm.sh" preflight --help >/dev/null
+bash "$ROOT/pm.sh" status --help >/dev/null
+bash "$ROOT/pm.sh" doctor --help >/dev/null
+bash "$ROOT/pm.sh" doctor --dry-run --gpu-backend gpus -g 0,1 >/dev/null
+bash "$ROOT/pm.sh" doctor --dry-run -g none >/dev/null
 bash "$ROOT/pm.sh" build --dry-run sample vtest >/dev/null
 [ ! -e "$tmpdir/sample/.dockerignore" ]
 bash "$ROOT/pm.sh" start --dry-run -g 0 -p 9999 sample >/dev/null
@@ -111,9 +115,11 @@ while IFS= read -r script; do
 done < <(find "$ROOT" -maxdepth 2 -type f \( -name '*.sh' -o -name 'pm.sh' -o -name 'install.sh' \))
 
 if command -v shellcheck >/dev/null 2>&1; then
-  shellcheck "$ROOT"/pm.sh "$ROOT"/install.sh "$ROOT"/*.sh "$ROOT"/scripts/*.sh
+  shellcheck --external-sources --source-path="$ROOT" "$ROOT"/pm.sh "$ROOT"/install.sh "$ROOT"/*.sh "$ROOT"/scripts/*.sh "$ROOT"/tests/*.sh
 else
   echo "shellcheck not found; skipped."
 fi
+
+bash "$ROOT/tests/diagnostics.sh"
 
 echo "Smoke tests passed."

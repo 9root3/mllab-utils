@@ -31,7 +31,9 @@ Commands:
   stop [-n name] <project>     Stop a project container.
   rm [-n name] <project>       Remove a project container.
 
-  gpu                          Show GPU processes and matching Docker containers.
+  status                       Show GPU inventory, compute occupancy, and containers.
+  gpu                          Alias for status.
+  doctor [options]             Test a temporary container using an existing image.
   sizes                        Show running containers sorted by reported size.
   preflight [options]          Validate Docker/NVIDIA/GPU configuration.
   test                         Run local smoke tests.
@@ -157,8 +159,11 @@ case "$command" in
   rm)
     run_stop_or_rm rm "$@"
     ;;
-  gpu)
+  status|gpu)
     exec "$MLLAB_ROOT/scripts/gpu_status.sh" "$@"
+    ;;
+  doctor)
+    exec "$MLLAB_ROOT/scripts/doctor.sh" "$@"
     ;;
   sizes)
     exec "$MLLAB_ROOT/scripts/container_sizes.sh" "$@"

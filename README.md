@@ -145,6 +145,8 @@ mllab attach <container_name>
 mllab stop [-n name] <project>
 mllab rm [-n name] <project>
 mllab gpu
+mllab status
+mllab doctor [--image IMAGE] [-g IDS] [--gpu-backend runtime|gpus] [--dry-run]
 mllab sizes
 mllab preflight [options]
 mllab test
@@ -215,7 +217,7 @@ mllab sizes
 bash tests/smoke.sh
 ```
 
-이 테스트는 `bash -n`, `mllab help/config`, `build --dry-run`, `start --dry-run`, `install --dry-run`을 확인합니다. `shellcheck`가 설치되어 있으면 추가 lint도 실행합니다.
+이 테스트는 `bash -n`, help/config, build/start/create/attach/install/doctor의 dry-run 및 인자 검증을 확인합니다. status/doctor의 mock regression tests도 실행하며 실제 GPU나 Docker daemon은 필요하지 않습니다. `shellcheck`가 설치되어 있으면 source 파일과 tests를 포함해 lint도 실행합니다.
 
 설치 후에는 같은 검증을 다음처럼 실행할 수도 있습니다.
 
@@ -223,13 +225,33 @@ bash tests/smoke.sh
 mllab test
 ```
 
+## GPU 상태와 실행 진단
+
+```bash
+mllab status
+# mllab gpu도 같은 상태를 표시합니다.
+```
+
+GPU index, 모델, VRAM/사용량, compute 점유 여부와 실제 compute PID의 container 이름을 표시합니다. `/proc/<pid>/cgroup`의 전체 64자리 ID를 `docker inspect`로 확인하며, 매핑하지 못한 PID는 `unmapped`로 남깁니다. `Compute-idle`은 조회 시점에 compute PID가 없다는 뜻이며, GPU 예약이나 그래픽 작업·메모리 여유를 보장하지 않습니다. Compute 조회 실패를 idle로 표시하지 않습니다.
+
+실제 container 시작과 선택한 GPU의 UUID가 일치하는지 검사하려면:
+
+```bash
+mllab doctor --dry-run --image pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel --gpu-backend gpus -g 0,1
+mllab doctor --image pytorch/pytorch:2.7.1-cuda12.8-cudnn9-devel --gpu-backend gpus -g 0,1
+# CPU-only: 이미지에 /bin/sh가 있어야 합니다.
+mllab doctor --image ubuntu:22.04 -g none
+```
+
+이미지는 이미 해당 노드에 있어야 하며 자동으로 pull하지 않습니다. 기본값은 `MLLAB_BASE_IMAGE`, GPU/backend 기본값은 노드 config를 사용합니다. `runtime` 노드는 `--gpu-backend runtime`을 사용합니다. 명령은 preflight 후 임시 container에서 `nvidia-smi` 또는 CPU marker만 실행합니다. Network, host mount, port 노출 없이 실행하며 성공·실패·timeout 시 자신이 만든 container ID만 정리합니다. GNU `timeout`이 필요하고, 시작 timeout은 기본 30초(`--timeout 1..300`)입니다. GPU compute 또는 PyTorch/CUDA 호환성을 검증하는 명령은 아닙니다.
+
 ## 배포 운영
 
 여러 서버 노드에서 같은 버전을 쓰려면 Git tag를 기준으로 배포합니다.
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag -a v0.3.0 -m "Release v0.3.0"
+git push origin v0.3.0
 ```
 
 각 서버에서는 필요한 버전으로 checkout합니다.
@@ -237,7 +259,7 @@ git push origin v0.2.0
 ```bash
 cd ~/mllab-utils
 git fetch --tags
-git checkout v0.2.0
+git checkout v0.3.0
 ```
 
 버전 문자열은 `VERSION` 파일과 `mllab version`으로 확인합니다.
