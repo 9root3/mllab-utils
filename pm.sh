@@ -120,7 +120,9 @@ run_stop_or_rm() {
 }
 
 command=${1:-help}
-[ "$#" -gt 0 ] && shift || true
+if [ "$#" -gt 0 ]; then
+  shift
+fi
 
 case "$command" in
   help|-h|--help)
