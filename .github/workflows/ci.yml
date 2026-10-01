@@ -1,0 +1,22 @@
+name: CI
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+      - name: Run smoke tests
+        env:
+          # Follow config/default.env referenced by scripts/lib.sh.
+          SHELLCHECK_OPTS: --external-sources
+        run: bash tests/smoke.sh
