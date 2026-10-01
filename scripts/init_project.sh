@@ -48,6 +48,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ "${#positional[@]}" -ge 2 ] || { usage >&2; exit 1; }
+[ "${#positional[@]}" -eq 2 ] || mllab_die "Expected <project_name> and <git_url> only"
 
 project_name=${positional[0]}
 git_url=${positional[1]}

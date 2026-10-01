@@ -66,7 +66,7 @@ EOF
 
 container_name_from_project_args() {
   local explicit_name=""
-  local project=""
+  local positional=()
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -77,24 +77,25 @@ container_name_from_project_args() {
         ;;
       --)
         shift
-        [ "$#" -gt 0 ] && project=${*: -1}
+        positional+=("$@")
         break
         ;;
       -*)
-        shift
+        mllab_die "Unknown option: $1"
         ;;
       *)
-        project=$1
+        positional+=("$1")
         shift
         ;;
     esac
   done
 
+  [ "${#positional[@]}" -le 1 ] || mllab_die "Expected at most one <project>"
   if [ -n "$explicit_name" ]; then
     printf '%s\n' "$explicit_name"
   else
-    [ -n "$project" ] || mllab_die "Missing <project>"
-    mllab_default_container_name "$project"
+    [ "${#positional[@]}" -eq 1 ] && [ -n "${positional[0]}" ] || mllab_die "Missing <project>"
+    mllab_default_container_name "${positional[0]}"
   fi
 }
 

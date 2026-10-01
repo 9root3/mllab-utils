@@ -54,6 +54,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ "${#positional[@]}" -ge 1 ] || { usage >&2; exit 1; }
+[ "${#positional[@]}" -le 2 ] || mllab_die "Expected <project> and optional [tag] only"
 
 project=${positional[0]}
 tag=${positional[1]:-$MLLAB_DEFAULT_TAG}

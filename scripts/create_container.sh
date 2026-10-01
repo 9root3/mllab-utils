@@ -107,6 +107,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ "${#positional[@]}" -ge 1 ] || { usage >&2; exit 1; }
+[ "${#positional[@]}" -eq 1 ] || mllab_die "Expected exactly one <project>"
 
 project=${positional[0]}
 project_path=$(mllab_project_path "$project")

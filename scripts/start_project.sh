@@ -24,6 +24,7 @@ container_name=""
 project=""
 replace=false
 forward_args=()
+positional=()
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -63,21 +64,24 @@ while [ "$#" -gt 0 ]; do
       ;;
     --)
       shift
-      forward_args+=("$@")
-      [ "$#" -gt 0 ] && project=${*: -1}
+      positional+=("$@")
+      forward_args+=(-- "$@")
       break
       ;;
     -*)
       mllab_die "Unknown option: $1"
       ;;
     *)
-      project=$1
+      positional+=("$1")
       forward_args+=("$1")
       shift
       ;;
   esac
 done
 
+[ "${#positional[@]}" -ge 1 ] || { usage >&2; exit 1; }
+[ "${#positional[@]}" -eq 1 ] || mllab_die "Expected exactly one <project>"
+project=${positional[0]}
 [ -n "$project" ] || { usage >&2; exit 1; }
 
 if [ -z "$container_name" ]; then

@@ -5,7 +5,7 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
-printf 'MLLAB_DATA_DIR=\n' > "$tmpdir/config.env"
+printf 'MLLAB_DATA_DIR=\nMLLAB_CONTAINER_PREFIX=smoke_\n' > "$tmpdir/config.env"
 export MLLAB_CONFIG_FILE=$tmpdir/config.env
 export MLLAB_PROJECTS_DIR=$tmpdir
 
@@ -38,6 +38,73 @@ bash "$ROOT/pm.sh" create --dry-run -g none -p 9999 sample >/dev/null
 bash "$ROOT/pm.sh" create --dry-run --host-user -g none -p 9999 sample >/dev/null
 bash "$ROOT/pm.sh" attach --dry-run --host-user sample_container >/dev/null
 bash "$ROOT/install.sh" --dry-run >/dev/null
+
+bash "$ROOT/pm.sh" start --dry-run -- sample >/dev/null
+bash "$ROOT/pm.sh" create --dry-run -- sample >/dev/null
+bash "$ROOT/pm.sh" build --dry-run -- sample vtest >/dev/null
+
+mkdir -p "$tmpdir/bin"
+cat > "$tmpdir/bin/docker" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$DOCKER_CALLS"
+EOF
+cat > "$tmpdir/bin/git" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$GIT_CALLS"
+EOF
+chmod +x "$tmpdir/bin/docker" "$tmpdir/bin/git"
+export PATH="$tmpdir/bin:$PATH"
+export DOCKER_CALLS="$tmpdir/docker-calls.txt"
+export GIT_CALLS="$tmpdir/git-calls.txt"
+
+expect_invalid_args() {
+  : > "$DOCKER_CALLS"
+  : > "$GIT_CALLS"
+  if bash "$ROOT/pm.sh" "$@" > "$tmpdir/invalid-output.txt" 2>&1; then
+    echo "Unexpected success: mllab $*" >&2
+    exit 1
+  fi
+  if ! grep -q '^Error:' "$tmpdir/invalid-output.txt"; then
+    echo "Missing argument error: mllab $*" >&2
+    cat "$tmpdir/invalid-output.txt" >&2
+    exit 1
+  fi
+  if [ -s "$DOCKER_CALLS" ]; then
+    echo "Docker was called for invalid arguments: mllab $*" >&2
+    exit 1
+  fi
+  if [ -s "$GIT_CALLS" ]; then
+    echo "Git was called for invalid arguments: mllab $*" >&2
+    exit 1
+  fi
+}
+
+expect_invalid_args start sample other
+expect_invalid_args start --replace sample other
+expect_invalid_args start -- sample other
+expect_invalid_args start sample -- other
+expect_invalid_args create sample other
+expect_invalid_args create --replace sample other
+expect_invalid_args create -- sample other
+expect_invalid_args init newproject https://example.com/repo.git other
+expect_invalid_args init -- newproject https://example.com/repo.git other
+[ ! -e "$tmpdir/newproject" ]
+expect_invalid_args build sample vtest other
+expect_invalid_args build -- sample vtest other
+expect_invalid_args stop sample other
+expect_invalid_args stop -- sample other
+expect_invalid_args stop -n custom sample other
+expect_invalid_args rm sample other
+expect_invalid_args rm -- sample other
+expect_invalid_args rm -n custom sample other
+expect_invalid_args stop --bogus sample
+expect_invalid_args rm --bogus sample
+
+: > "$DOCKER_CALLS"
+bash "$ROOT/pm.sh" stop -- sample >/dev/null
+bash "$ROOT/pm.sh" rm -n custom >/dev/null
+grep -qx 'stop smoke_sample' <(head -n 1 "$DOCKER_CALLS")
+grep -qx 'rm custom' <(tail -n 1 "$DOCKER_CALLS")
 
 while IFS= read -r script; do
   bash -n "$script"
