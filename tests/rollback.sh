@@ -5,14 +5,28 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 export XDG_CACHE_HOME="$tmp/cache" MLLAB_CONFIG_FILE="$tmp/config.env"
 unset MLLAB_MANAGER_ROOT MLLAB_ROOT MLLAB_NO_UPDATE_NOTIFIER
+git_config_digest() {
+  python3 - <<'DIGEST'
+import os,hashlib,json
+paths=[os.path.expanduser('~/.gitconfig'),os.path.join(os.environ.get('XDG_CONFIG_HOME',os.path.expanduser('~/.config')),'git','config')]
+if os.environ.get('GIT_CONFIG_GLOBAL'):paths.append(os.environ['GIT_CONFIG_GLOBAL'])
+print(json.dumps({p:hashlib.sha256(open(p,'rb').read()).hexdigest() if os.path.isfile(p) else None for p in paths},sort_keys=True))
+DIGEST
+}
+config_before=$(git_config_digest)
 mkdir -p "$tmp/bin" "$tmp/source/config"
 : > "$MLLAB_CONFIG_FILE"
-export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$tmp/gitconfig"
-git config --global user.name 'Release Test'
-git config --global user.email release-test@example.invalid
-# All Git operations use this local fixture, never GitHub.
-git config --global "url.$tmp/source.insteadOf" https://github.com/9root3/mllab-utils.git
-git init --quiet --initial-branch=main "$tmp/source"
+# Command-scoped config works on older Git and never writes user config files.
+export REAL_GIT=$(command -v git) FIXTURE_SOURCE="$tmp/source"
+cat > "$tmp/bin/git" <<'GIT_WRAPPER'
+#!/usr/bin/env bash
+exec "$REAL_GIT" -c user.name='Release Test' -c user.email=release-test@example.invalid \
+  -c commit.gpgsign=false -c "url.$FIXTURE_SOURCE.insteadOf=https://github.com/9root3/mllab-utils.git" "$@"
+GIT_WRAPPER
+chmod +x "$tmp/bin/git"
+export PATH="$tmp/bin:$PATH"
+git init --quiet "$tmp/source"
+git -C "$tmp/source" symbolic-ref HEAD refs/heads/main
 cp "$ROOT/config/default.env" "$tmp/source/config/default.env"
 printf '0.3.1\n' > "$tmp/source/VERSION"
 cat > "$tmp/source/pm.sh" <<'OLD'
@@ -103,4 +117,5 @@ if "$cli" rollback 0.3.1 > "$tmp/output" 2>&1; then exit 1; fi
 [ "$(find "$tmp/manager-releases" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 1 ]
 # Exercise update fixtures under the environment exported by installed launchers.
 MLLAB_MANAGER_ROOT="$tmp/manager" MLLAB_NO_UPDATE_NOTIFIER=1 bash "$ROOT/tests/updates.sh"
+[ "$config_before" = "$(git_config_digest)" ]
 echo 'Rollback integration tests passed.'
