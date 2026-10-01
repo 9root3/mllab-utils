@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Installed launchers export these; fixtures must control their own environment.
+unset MLLAB_MANAGER_ROOT MLLAB_NO_UPDATE_NOTIFIER
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

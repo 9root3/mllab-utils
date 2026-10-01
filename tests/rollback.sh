@@ -101,4 +101,6 @@ if "$cli" rollback 0.3.1 > "$tmp/output" 2>&1; then exit 1; fi
 [ "$(cat "$tmp/manager/local.txt")" = keep ]
 # Only the completed older checkout remains; failed partial clones are cleaned.
 [ "$(find "$tmp/manager-releases" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 1 ]
+# Exercise update fixtures under the environment exported by installed launchers.
+MLLAB_MANAGER_ROOT="$tmp/manager" MLLAB_NO_UPDATE_NOTIFIER=1 bash "$ROOT/tests/updates.sh"
 echo 'Rollback integration tests passed.'
