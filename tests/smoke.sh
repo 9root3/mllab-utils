@@ -120,6 +120,7 @@ else
   echo "shellcheck not found; skipped."
 fi
 
+bash "$ROOT/tests/updates.sh"
 bash "$ROOT/tests/diagnostics.sh"
 
 echo "Smoke tests passed."

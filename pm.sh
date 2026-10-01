@@ -9,6 +9,10 @@ export MLLAB_ROOT
 source "$MLLAB_ROOT/scripts/lib.sh"
 mllab_load_config
 
+# shellcheck source=scripts/update.sh
+source "$MLLAB_ROOT/scripts/update.sh"
+mllab_update_notice "$@" || true
+
 usage() {
   cat <<'EOF'
 Project Manager for MLLAB
@@ -20,6 +24,7 @@ Usage:
 Commands:
   help                         Show this help.
   version                      Print the installed mllab-utils version.
+  update [--check]             Check or install the latest stable release.
   config                       Print the effective runtime configuration.
 
   init <project> <git_url>     Create a project from a Git repository.
@@ -134,6 +139,9 @@ case "$command" in
     ;;
   version)
     cat "$MLLAB_ROOT/VERSION"
+    ;;
+  update)
+    mllab_update "$@"
     ;;
   config)
     print_config

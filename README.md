@@ -281,3 +281,16 @@ When asked to create a project container, prefer this sequence:
    `mllab start -g <gpus> -p <port> <project>`
 
 Do not use `--replace`, `mllab rm`, or destructive Docker commands unless explicitly requested.
+
+## 업데이트 알림과 Release 업데이트
+
+터미널에서 `mllab`을 사용할 때 GitHub의 최신 stable Release를 하루 한 번 확인합니다. 새 버전이 있으면 stderr에 설치 버전, 최신 버전, `mllab update` 안내를 표시합니다. 결과는 `${XDG_CACHE_HOME:-$HOME/.cache}/mllab-utils/release`에 캐시하며 조회 실패도 하루 동안 캐시합니다. 네트워크 조회는 최대 3초이며 실패해도 원래 명령을 계속 실행합니다.
+
+CI/비대화형 실행, `--dry-run`, help/version/test 명령에서는 자동 조회하지 않습니다. `MLLAB_NO_UPDATE_NOTIFIER=1`로 자동 알림을 끌 수 있습니다. GitHub에 stable Release를 발행해야 새 버전으로 안내됩니다. Main push만으로는 알리지 않습니다.
+
+```bash
+mllab update --check  # 캐시를 우회하여 최신 Release 확인
+mllab update          # 최신 Release tag로 fast-forward
+```
+
+업데이트는 실제 설치 저장소에서 수행하며 main branch와 clean 작업 트리가 필요합니다. Local 수정이나 분기된 이력은 덮어쓰지 않습니다. `flock`으로 동시 업데이트를 막으며 사용자 config, 설치 symlink, 다른 파일, container는 변경하지 않습니다. Git과 curl이 필요하고, 업데이트 실행에는 Linux의 flock이 필요합니다. 자동 알림에는 Python/GitHub CLI가 필요하지 않습니다.
