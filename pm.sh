@@ -94,7 +94,8 @@ container_name_from_project_args() {
   if [ -n "$explicit_name" ]; then
     printf '%s\n' "$explicit_name"
   else
-    [ "${#positional[@]}" -eq 1 ] && [ -n "${positional[0]}" ] || mllab_die "Missing <project>"
+    [ "${#positional[@]}" -eq 1 ] || mllab_die "Missing <project>"
+    [ -n "${positional[0]}" ] || mllab_die "Missing <project>"
     mllab_default_container_name "${positional[0]}"
   fi
 }
