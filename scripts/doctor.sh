@@ -81,7 +81,7 @@ fi
 
 cmd=(docker create --pull=never --rm --name "$name" --label io.mllab-utils.doctor=true
   --label "io.mllab-utils.doctor-token=$token"
-  --network none --read-only --cap-drop ALL --security-opt no-new-privileges --memory 256m --cpus 0.5)
+  --network none --read-only --cap-drop ALL --memory 256m --cpus 0.5)
 if $cpu_only; then
   cmd+=(-e NVIDIA_VISIBLE_DEVICES=void --entrypoint /bin/sh "$resolved_image" -c 'printf "MLLAB_DOCTOR_CPU_OK\n"')
 else
