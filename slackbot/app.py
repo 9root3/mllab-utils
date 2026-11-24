@@ -73,6 +73,7 @@ def on_mention(event, say):
 @app.action("gpu_refresh")
 @app.action("gpu_view_free")
 @app.action("gpu_view_all")
+@app.action("gpu_view_detail")
 def on_button(ack, action, respond):
     ack()
     blocks, fb = render(action.get("value", ""), force=action["action_id"] == "gpu_refresh")
