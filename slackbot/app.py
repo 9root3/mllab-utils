@@ -46,14 +46,21 @@ def render(text, force=False):
     return build_blocks(results, parse_query(text), now=t)
 
 
+log = logging.getLogger("mllab-gpu")
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
 
 
 @app.command("/gpu")
 def on_gpu(ack, command, respond):
-    ack()
-    blocks, fb = render(command.get("text", ""))
-    respond(blocks=blocks, text=fb, response_type="in_channel")
+    log.info("/gpu from %s in %s: %r", command.get("user_name"), command.get("channel_name"), command.get("text"))
+    ack("⏳ 노드 조회 중… (최대 수십 초)")  # 본인에게만 보이는 즉시 응답
+    try:
+        blocks, fb = render(command.get("text", ""))
+        r = respond(blocks=blocks, text=fb, response_type="in_channel")
+        log.info("respond -> %s %s", getattr(r, "status_code", "?"), str(getattr(r, "body", ""))[:300])
+    except Exception as e:
+        log.exception("/gpu failed")
+        respond(text=f"⚠️ 조회 실패: {e}", response_type="ephemeral")
 
 
 @app.event("app_mention")
@@ -69,7 +76,8 @@ def on_mention(event, say):
 def on_button(ack, action, respond):
     ack()
     blocks, fb = render(action.get("value", ""), force=action["action_id"] == "gpu_refresh")
-    respond(blocks=blocks, text=fb, replace_original=True)
+    r = respond(blocks=blocks, text=fb, replace_original=True)
+    log.info("button respond -> %s %s", getattr(r, "status_code", "?"), str(getattr(r, "body", ""))[:300])
 
 
 def digest_loop():

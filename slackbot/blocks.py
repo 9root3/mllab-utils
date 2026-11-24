@@ -14,6 +14,8 @@ def parse_query(text):
     mode = None
     for t in toks:
         tl = t.lower()
+        if tl in ("all", "전체"):
+            continue
         if tl in ("free", "idle", "빈", "유휴"):
             q["free"] = True
         elif tl in ("node", "nodes", "노드"):
@@ -163,11 +165,11 @@ def build_blocks(results, q=None, now=None):
     text = query_to_text(q)
     blocks.append({"type": "actions", "elements": [
         {"type": "button", "action_id": "gpu_refresh", "text": {"type": "plain_text", "text": "🔄 새로고침", "emoji": True},
-         "value": text},
+         "value": text or "all"},
         {"type": "button", "action_id": "gpu_view_free", "text": {"type": "plain_text", "text": "🟢 빈 GPU만", "emoji": True},
          "value": "free", **({"style": "primary"} if q["free"] else {})},
         {"type": "button", "action_id": "gpu_view_all", "text": {"type": "plain_text", "text": "📋 전체", "emoji": True},
-         "value": "", **({"style": "primary"} if not q["free"] else {})},
+         "value": "all", **({"style": "primary"} if not q["free"] else {})},
     ]})
     blocks.append({"type": "context", "elements": [{"type": "mrkdwn",
         "text": "스냅샷이며 예약이 아닙니다 · GPU compute 프로세스가 없으면 유휴  |  `/gpu free` `/gpu node 72` `/gpu user eklee`"}]})
