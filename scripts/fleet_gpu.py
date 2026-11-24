@@ -62,6 +62,15 @@ def query(host, timeout):
     return host, sorted(gpus, key=lambda g: g["idx"]), None
 
 
+def collect(hosts=None, timeout=40):
+    """모든 노드를 병렬 조회해 [(host, gpus|None, err|None)] 를 노드 번호순으로 반환한다."""
+    hosts = hosts or hosts_from_ssh_config()
+    with ThreadPoolExecutor(len(hosts)) as ex:
+        results = list(ex.map(lambda h: query(h, timeout), hosts))
+    results.sort(key=lambda r: int(re.sub(r"\D", "", r[0]) or 0))
+    return results
+
+
 def table(header, rows):
     w = [max(len(str(x)) for x in col) for col in zip(header, *rows)]
     fmt = "| " + " | ".join(f"{{:<{x}}}" for x in w) + " |"
@@ -76,9 +85,7 @@ def main():
     ap.add_argument("--timeout", type=int, default=40)
     a = ap.parse_args()
     hosts = a.hosts.split(",") if a.hosts else hosts_from_ssh_config()
-    with ThreadPoolExecutor(len(hosts)) as ex:
-        results = list(ex.map(lambda h: query(h, a.timeout), hosts))
-    results.sort(key=lambda r: int(re.sub(r"\D", "", r[0]) or 0))
+    results = collect(hosts, a.timeout)
 
     maxg = max((len(g) for _, g, _ in results if g), default=0)
     grid, free, per_user, errors = [], [], defaultdict(lambda: defaultdict(list)), []
