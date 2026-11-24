@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenClawProjectInit",
+  "type": "object",
+  "required": ["action", "project", "runtime"],
+  "properties": {
+    "action": { "type": "string", "const": "project-init" },
+    "project": { "type": "string", "minLength": 1 },
+    "runtime": { "type": "string", "enum": ["python", "node"] },
+    "no_template": { "type": "boolean", "const": true }
+  }
+}

@@ -1,0 +1,2 @@
+{"timestamp": 1772171822570, "level": "INFO", "run_id": "run-20260227-055702-3f404306", "phase": "run", "message": "starting run mode=exp", "duration_ms": 0, "config": "experiments/configs/baseline.yaml"}
+{"timestamp": 1772171822750, "level": "INFO", "run_id": "run-20260227-055702-3f404306", "phase": "run", "message": "run completed", "duration_ms": 179, "status": "success"}

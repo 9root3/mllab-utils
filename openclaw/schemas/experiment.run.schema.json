@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenClawExperimentRun",
+  "type": "object",
+  "required": ["action", "project", "config", "mode"],
+  "properties": {
+    "action": { "type": "string", "const": "experiment-run" },
+    "project": { "type": "string", "minLength": 1 },
+    "config": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "enum": ["dev", "exp"] },
+    "overrides": { "type": "object" }
+  }
+}

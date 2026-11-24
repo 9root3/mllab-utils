@@ -1,0 +1,16 @@
+id: baseline
+name: baseline-experiment
+description: Baseline dry run for harness contract
+dataset_ref: /data/sample
+parameters:
+  lr: 0.001
+  seed: 42
+entrypoint: "python3 -c 'print(\"hello from harness\")'"
+resources:
+  cpu: "4"
+  mem: "8Gi"
+  gpu: 0
+timeout: 600
+retry_policy:
+  max_retries: 0
+container_image: ""

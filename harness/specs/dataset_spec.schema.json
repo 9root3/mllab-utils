@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatasetSpec",
+  "type": "object",
+  "required": ["id", "path", "format"],
+  "properties": {
+    "id": { "type": "string" },
+    "path": { "type": "string" },
+    "format": { "type": "string" }
+  }
+}

@@ -1,0 +1,3 @@
+suite_id: smoke
+experiments:
+  - experiments/configs/baseline.yaml
